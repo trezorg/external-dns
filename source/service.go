@@ -211,8 +211,35 @@ func (sc *serviceSource) Endpoints() ([]*endpoint.Endpoint, error) {
 
 		log.Debugf("Endpoints generated from service: %s/%s: %v", svc.Namespace, svc.Name, svcEndpoints)
 		sc.setResourceLabel(svc, svcEndpoints)
+		sc.setParentResourceLabel(svc, svcEndpoints)
 		endpoints = append(endpoints, svcEndpoints...)
 	}
+
+	// now look for endpoints that have parent label set and merge them
+	for _, ep := range endpoints {
+		if ep.Labels[endpoint.ParentResourceKey] != "" {
+			log.Debugf("Found endpoint with parent resource key set: %s", ep.Labels[endpoint.ParentResourceKey])
+			// double check that parent doesn't point to itself
+			if ep.Labels[endpoint.ParentResourceKey] == ep.Labels[endpoint.ResourceLabelKey] {
+				log.Warningf("Found endpoint that has parent resource key pointing to itself. Parent: %s. ResourceKey: %s", ep.Labels[endpoint.ParentResourceKey], ep.Labels[endpoint.ResourceLabelKey])
+			} else {
+				for _, targetEndpoint := range endpoints {
+					if targetEndpoint.Labels[endpoint.ResourceLabelKey] == ep.Labels[endpoint.ParentResourceKey] {
+						log.Debugf("Appending target '%s' to endpoint with label '%s'", ep.Targets[0], targetEndpoint.Labels[endpoint.ResourceLabelKey])
+						targetEndpoint.Targets = append(targetEndpoint.Targets, ep.Targets[0])
+					}
+				}
+			}
+		}
+	}
+	// now that we merged endpoints that have parent annotation, lets remove them from final list of endpoints
+	endpointsWithNoParents := []*endpoint.Endpoint{}
+	for _, ep := range endpoints {
+		if ep.Labels[endpoint.ParentResourceKey] == "" {
+			endpointsWithNoParents = append(endpointsWithNoParents, ep)
+		}
+	}
+	endpoints = endpointsWithNoParents
 
 	for _, ep := range endpoints {
 		sort.Sort(ep.Targets)
@@ -400,6 +427,15 @@ func (sc *serviceSource) filterByServiceType(services []*v1.Service) []*v1.Servi
 func (sc *serviceSource) setResourceLabel(service *v1.Service, endpoints []*endpoint.Endpoint) {
 	for _, ep := range endpoints {
 		ep.Labels[endpoint.ResourceLabelKey] = fmt.Sprintf("service/%s/%s", service.Namespace, service.Name)
+	}
+}
+
+func (sc *serviceSource) setParentResourceLabel(service *v1.Service, endpoints []*endpoint.Endpoint) {
+	parent, ok := service.Annotations[parentAnnotationKey]
+	if ok && parent != "" {
+		for _, ep := range endpoints {
+			ep.Labels[endpoint.ParentResourceKey] = fmt.Sprintf("service/%s", parent)
+		}
 	}
 }
 

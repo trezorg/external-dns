@@ -45,6 +45,8 @@ const (
 	aliasAnnotationKey = "external-dns.alpha.kubernetes.io/alias"
 	// The value of the controller annotation so that we feel responsible
 	controllerAnnotationValue = "dns-controller"
+	// The annotation used to define another service (namespace/name) that will actually hold dns record for this service, to allow multiple services to share same dns via multiple A records
+	parentAnnotationKey = "external-dns.alpha.kubernetes.io/parent"
 )
 
 // Provider-specific annotations

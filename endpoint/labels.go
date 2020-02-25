@@ -35,6 +35,9 @@ const (
 	// ResourceLabelKey is the name of the label that identifies k8s resource which wants to acquire the DNS name
 	ResourceLabelKey = "resource"
 
+	// ParentResourceKey is the name of the label that identifies k8s resource that should own the DNS name, to allows multiple resources to share dns name.
+	ParentResourceKey = "parent-resource"
+
 	// AWSSDDescriptionLabel label responsible for storing raw owner/resource combination information in the Labels
 	// supposed to be inserted by AWS SD Provider, and parsed into OwnerLabelKey and ResourceLabelKey key by AWS SD Registry
 	AWSSDDescriptionLabel = "aws-sd-description"
